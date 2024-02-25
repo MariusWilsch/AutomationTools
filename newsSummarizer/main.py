@@ -1,4 +1,4 @@
-import openai, os, requests, json
+import openai, os, requests, json, time
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -88,6 +88,69 @@ class AssistantManager:
             )
             AssistantManager.assistant_id = self.assistant.id
         print(self.assistant.id, "assistant created")
+
+    def create_thread(self, name, assistant_id):
+        if not self.thread:
+            self.thread = self.client.beta.assistants.thread.create(
+                name=name, assistant_id=assistant_id
+            )
+            AssistantManager.thread_id = self.thread.id
+        print(self.thread.id, "thread created")
+
+    def add_message(self, role, message):
+        if self.thread:
+            self.client.beta.assistants.thread.message.create(
+                thread_id=self.thread.id, role=role, content=message
+            )
+
+    def run_assistant(self, instructions):
+        if self.thread and self.assistant:
+            self.run = self.client.beta.assistants.thread.run.create(
+                thread_id=self.thread.id,
+                assistant_id=self.assistant.id,
+                instructions=instructions,
+            )
+
+    def process_message(self):
+        if self.thread:
+            messages = self.client.beta.threads.messages.list(thread_id=self.thread.id)
+            summary = []
+
+            response = messages.data[0].content.text.value
+            role = messages.data[0].role
+            summary.append(response)
+
+            self.summary = "\n".join(summary)
+            print(f"Summary: {role.capitalize()}: {response}")
+
+    def call_required_functions(self, required_actions):
+        if not self.run:
+            return
+        tools_output = []
+
+        for action in required_actions["tool_calls"]:
+            func_name = action["function"]["name"]
+            arguments = json.loads(action["function"]["arguments"])
+
+            if func_name == "get_news":
+                news = get_news(arguments["topic"])
+                tools_output.append(news)
+
+    def wait_for_completion(self):
+        if self.run and self.thread:
+            while True:
+                time.sleep(5)
+                run_status = self.client.beta.assistants.thread.runs.retrieve(
+                    thread_id=self.thread.id, run_id=self.run.id
+                )
+                print(f"Run status: {run_status.model_dump_json(indent=4)}")
+
+                if run_status.status == "completed":
+                    self.process_message()
+                    break
+                elif run_status.status == "requires_action":
+                    print("Run requires action")
+                    self.call_required_functions(self, required_actions)
 
 
 if __name__ == "__main__":
