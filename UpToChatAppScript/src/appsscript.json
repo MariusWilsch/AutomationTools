@@ -1,0 +1,38 @@
+{
+  "timeZone": "Europe/Berlin",
+  "dependencies": {
+    "enabledAdvancedServices": [
+      {
+        "userSymbol": "Gmail",
+        "serviceId": "gmail",
+        "version": "v1"
+      }
+    ]
+  },
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8",
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/script.external_request"
+  ],
+  "addOns": {
+    "common": {
+      "name": "UpToChat",
+      "logoUrl": "https://drive.google.com/uc?export=view&id=1WTLnz51RCFT5Vs5bYX-0zcwxgxjskI3O",
+      "layoutProperties": {
+        "primaryColor": "#ff392b",
+        "secondaryColor": "#d68617"
+      }
+    },
+    "gmail": {
+      "homepageTrigger": {
+        "runFunction": "buildHomepage"
+      },
+      "contextualTriggers": [
+        {
+          "unconditional": {},
+          "onTriggerFunction": "onGmailMessageOpen"
+        }
+      ]
+    }
+  }
+}

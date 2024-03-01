@@ -1,0 +1,7 @@
+python-dotenv
+openai
+requests
+streamlit
+google-auth 
+google-auth-oauthlib
+google-auth-httplib2
