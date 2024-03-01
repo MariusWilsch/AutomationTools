@@ -21,15 +21,41 @@ function onGmailMessageOpen(context) {
     .setSubtitle("Interact with your Email!");
   card.setHeader(header);
 
-  // Creating a section
+  // // Creating a section
   const section = CardService.newCardSection();
-  card.addSection(section);
 
   // Buttons
   createButton("Get Thread Data", "getThreadData", section);
   createButton("Create AI Thread", "createAIThread", section);
 
+  card.addSection(section);
   return card.build();
+}
+
+function getSecret() {
+  const projectId = "micro-pilot-415714";
+  const secretName = "OpenAI-API-KEY"
+  const url = `https://secretmanager.googleapis.com/v1/projects/${projectId}/secrets/${secretName}/versions/latest:access`;
+
+  const res = UrlFetchApp.fetch(url, {
+    method: "get",
+    headers: {
+      "Authorization": "Bearer " + ScriptApp.getOAuthToken(),
+      "Content-Type": "application/json"
+    }
+  });
+
+  const data = JSON.parse(res.getContentText());
+  Logger.log(data, res.getResponseCode());
+  if (res.getResponseCode() === 200) {
+    // Replace atob with Utilities.base64Decode and convert byte array to string
+    const secretPayload = Utilities.newBlob(data.payload.data).getDataAsString();
+    Logger.log(secretPayload);
+    return secretPayload;
+  } else {
+    Logger.log("Error: ", res.getResponseCode());
+    return null;
+  }
 }
 
 function getThreadData(event) {
@@ -53,24 +79,27 @@ function getThreadData(event) {
 }
 
 function createAIThread(event) {
-  const url = "https://api.openai.com/v1/threads"
-  const plainMessages = JSON.parse(PropertiesService.getScriptProperties().getProperty('plainTextMessages'));
+  // const url = "https://api.openai.com/v1/threads"
+  // const plainMessages = JSON.parse(PropertiesService.getScriptProperties().getProperty('plainTextMessages'));
 
-  const payload = {
-    messages: [
-      {
-        role: "user",
-        content: plainMessages.join(' ')
-      }
-    ]
-  }
+  const secret = getSecret();
+  Logger.log("Secret is ", secret);
 
-  const options = {
-    method: "post",
-    contentType: "application/json",
-    payload: JSON.stringify(payload),
-  }
+  // const payload = {
+  //   messages: [
+  //     {
+  //       role: "user",
+  //       content: plainMessages.join(' ')
+  //     }
+  //   ]
+  // }
 
-  const response = UrlFetchApp.fetch(url, options);
-  Logger.log(response);
+  // const options = {
+  //   method: "post",
+  //   contentType: "application/json",
+  //   payload: JSON.stringify(payload),
+  // }
+
+  // const response = UrlFetchApp.fetch(url, options);
+  // Logger.log(response);
 }
