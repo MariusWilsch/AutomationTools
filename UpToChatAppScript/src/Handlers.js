@@ -154,7 +154,26 @@ function runAssistant() {
   console.log("Run started successfully with runID: ", run_id);
 
   //* Waiting for the run to complete
-  waitForCompletion(thread_id, run_id);
+  orderedAssistantMessages = waitForCompletion(thread_id, run_id);
+  if (!orderedAssistantMessages) return createErrorNotification("Assistant messages not available", "runAssistant");
+
+  // Once you have the orderedAssistantMessages...
+  const cardBuilder = CardService.newCardBuilder();
+  cardBuilder.setHeader(CardService.newCardHeader().setTitle("Assistant Response"));
+  const section = CardService.newCardSection();
+
+  orderedAssistantMessages.forEach((msg, index) => {
+    section.addWidget(CardService.newTextParagraph().setText(`Assistant Message ${index + 1}: ${msg}`));
+  });
+
+  cardBuilder.addSection(section);
+
+  // Now, instead of returning the card, use the ActionResponseBuilder to update the UI
+  const actionResponse = CardService.newActionResponseBuilder()
+    .setNavigation(CardService.newNavigation().pushCard(cardBuilder.build()))
+    .build();
+
+  return actionResponse;
 }
 
 function waitForCompletion(thread_id, run_id) {
@@ -172,7 +191,7 @@ function waitForCompletion(thread_id, run_id) {
 
   //* Process the completed run or Handle failed or cancelled run
   if (status === "completed")
-    getAssistantResponse(thread_id)
+    return getAssistantResponse(thread_id)
   else //TODO: Add handling for failure or cancellation here
     console.log("Run ended with status: " + status);
 }
@@ -204,18 +223,9 @@ function getAssistantResponse(thread_id) {
   orderedAssistantMessages.forEach((msg, index) => {
     Logger.log(`Assistant Message ${index + 1}: ${msg}`);
   });
-
-  const card = CardService.newCardBuilder()
-  const section = CardService.newCardSection();
-
-  orderedAssistantMessages.forEach((msg, index) => {
-    section.addWidget(CardService.newTextParagraph().setText(`Assistant Message ${index + 1}: ${msg}`));
-  });
-  //TODO: Assistant message is working but not displaying in the UI - need to fix this
-  return card.addSection(section).build();
+  return orderedAssistantMessages;
 }
 
-//! Untested function
 function deleteThread() {
   const scriptProp = PropertiesService.getScriptProperties();
   const threadID = scriptProp.getProperty('threadID');
