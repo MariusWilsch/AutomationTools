@@ -40,13 +40,8 @@ function getSecret() {
   return decodedSecret;
 }
 
-/**
- * Create an error notification for the UI.
- * @param {string} errorMessage - The error message to display to the user.
- * @return {GoogleAppsScript.Card_Service.ActionResponse} - The action response with the error notification.
- */
-function createErrorNotification(errorMessage) {
-  console.log(errorMessage)
+function createErrorNotification(errorMessage, funcName = "") {
+  console.log(errorMessage + " in " + funcName)
   return CardService.newActionResponseBuilder()
     .setNotification(CardService.newNotification()
       .setText(errorMessage)
@@ -56,7 +51,7 @@ function createErrorNotification(errorMessage) {
 
 function fetchResFromAPI(url, method, payload = null) {
   const secret = getSecret();
-  if (!secret) return createErrorNotification("No secret found!");
+  if (!secret) return createErrorNotification("No secret found!", "fetchResFromAPI");
 
   const options = {
     method: method,

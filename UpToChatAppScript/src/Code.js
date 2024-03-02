@@ -30,6 +30,7 @@ function onGmailMessageOpen(context) {
   createButton("Create Message", "createMessage", section);
   createButton("Get Message Data", "getMessageData", section);
   createButton("Run Assistant", "runAssistant", section);
+  createButton("Delete Thread", "deleteThread", section);
 
   card.addSection(section);
 

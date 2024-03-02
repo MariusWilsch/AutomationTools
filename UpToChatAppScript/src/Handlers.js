@@ -9,10 +9,6 @@ function getThreadData(event) {
     return `MESSAGE ${num + 1} - ${body}`
   });
 
-  // For testing/validation purposes I will save the data into a file to be able to see it
-  // const fileName = "ThreadData-" + thread.getFirstMessageSubject() + ".txt";
-  // DriveApp.createFile(fileName, JSON.stringify(plainTextMessages, null, 2));
-
   try {
     PropertiesService.getScriptProperties().setProperty('plainTextMessages', JSON.stringify(plainTextMessages));
   } catch (error) {
@@ -25,15 +21,16 @@ function createEmptyThread(event) {
   const scriptProp = PropertiesService.getScriptProperties();
   //* Check if threadID is already set
   const threadID = scriptProp.getProperty('threadID');
-  if (threadID) return createErrorNotification("ThreadID already set!");
+  if (threadID) return createErrorNotification("ThreadID already set!", "createEmptyThread");
 
   //* Creating a new empty thread
   const response = fetchResFromAPI("https://api.openai.com/v1/threads", "post");
-  if (!checkResponseCode(response.getResponseCode())) return createErrorNotification("Error creating thread!");
+  if (!checkResponseCode(response.getResponseCode())) return createErrorNotification("Error creating thread!", "createEmptyThread");
 
   const newThreadID = JSON.parse(response.getContentText()).id;
   console.log("Thread created successfully with threadID: ", newThreadID);
   scriptProp.setProperty('threadID', newThreadID);
+  return onGmailMessageOpen();
 }
 
 // function createAIThread(event) {
@@ -69,22 +66,23 @@ function createMessage() {
 
   //* Guard clause to check necessary properties
   const messageID = scriptProp.getProperty('messageID');
-  if (messageID) return createErrorNotification("MessageID already set!");
+  if (messageID) return createErrorNotification("MessageID already set!", "createMessage");
 
   const threadID = scriptProp.getProperty('threadID');
-  if (!threadID) return createErrorNotification("ThreadID not set!");
+  if (!threadID) return createErrorNotification("ThreadID not set!", "createMessage");
 
   const plainTextMessages = scriptProp.getProperty('plainTextMessages');
-  if (!plainTextMessages) return createErrorNotification("No plainTextMessages found!");
+  if (!plainTextMessages) return createErrorNotification("No plainTextMessages found!", "createMessage");
 
   //* Creating a new message
   const url = `https://api.openai.com/v1/threads/${threadID}/messages`;
-  const response = fetchFromAPI(url, "post", { role: "user", content: plainTextMessages });
-  if (!checkResponseCode(response.getResponseCode())) return createErrorNotification("Error creating message!");
+  const response = fetchResFromAPI(url, "post", { role: "user", content: plainTextMessages });
+  if (!checkResponseCode(response.getResponseCode())) return createErrorNotification("Error creating message!", "createMessage");
 
   const newMessageID = JSON.parse(response.getContentText()).id;
   console.log("Message created successfully with messageID: ", newMessageID);
   PropertiesService.getScriptProperties().setProperty('messageID', newMessageID);
+  return onGmailMessageOpen();
 }
 
 function getMessageData(event) {
@@ -93,20 +91,20 @@ function getMessageData(event) {
   //* Guard clause to check necessary properties
   const messageID = scriptProp.getProperty('messageID');
   if (!messageID)
-    return createErrorNotification("MessageID not set!");
+    return createErrorNotification("MessageID not set!", "getMessageData");
 
   const threadID = scriptProp.getProperty('threadID');
   if (!threadID)
-    return createErrorNotification("ThreadID not set!");
+    return createErrorNotification("ThreadID not set!", "getMessageData");
 
   //* Getting message data
   const url = `https://api.openai.com/v1/threads/${threadID}/messages/${messageID}`;
   const response = fetchResFromAPI(url, "get");
-  if (!checkResponseCode(response.getResponseCode())) return createErrorNotification("Error getting message data!");
+  if (!checkResponseCode(response.getResponseCode()))
+    return createErrorNotification("Error getting message data!", "getMessageData");
 
   const messageData = JSON.parse(response.getContentText());
   console.log("Message data: ", messageData);
-  return messageData;
 }
 
 // function getMessageData(event) {
@@ -145,37 +143,31 @@ function getMessageData(event) {
 function runAssistant() {
   //* Guard clause to check necessary properties
   const thread_id = PropertiesService.getScriptProperties().getProperty('threadID');
-  if (!thread_id) return createErrorNotification("ThreadID not set!");
+  if (!thread_id) return createErrorNotification("ThreadID not set!", "runAssistant");
 
   //* Running the assistant
   const url = `https://api.openai.com/v1/threads/${thread_id}/runs`;
   const response = fetchResFromAPI(url, "post", { "assistant_id": "asst_jHFuDKx43IyrktWeooD6BzFp" });
-  if (!checkResponseCode(response.getResponseCode())) return createErrorNotification("Error running assistant!");
+  if (!checkResponseCode(response.getResponseCode())) return createErrorNotification("Error running assistant!", "runAssistant");
 
   const run_id = JSON.parse(response.getContentText()).id;
   console.log("Run started successfully with runID: ", run_id);
 
   //* Waiting for the run to complete
-  waitForCompletion(thread_id, run_id, secret);
+  waitForCompletion(thread_id, run_id);
 }
 
-function waitForCompletion(thread_id, run_id, secret) {
+function waitForCompletion(thread_id, run_id) {
   let status = "";
   const url = `https://api.openai.com/v1/threads/${thread_id}/runs/${run_id}`;
 
   do {
-    Utilities.sleep(2500); // Wait for 5 seconds before checking the status again
-    const statusResponse = UrlFetchApp.fetch(url, {
-      method: "get",
-      headers: {
-        "Authorization": `Bearer ${secret}`,
-        "Content-Type": "application/json",
-        "OpenAI-Beta": "assistants=v1"
-      }
-    });
+    Utilities.sleep(2500); // Wait for 2.5 seconds before checking the status again
+    const statusResponse = fetchResFromAPI(url, "get");
+    if (!checkResponseCode(statusResponse.getResponseCode())) return createErrorNotification("Error getting run status!", "waitForCompletion");
 
     const statusData = JSON.parse(statusResponse.getContentText());
-    status = statusData.status; // Adjust based on the actual response structure
+    status = statusData.status;
   } while (status !== "completed" && status !== "failed" && status !== "cancelled");
 
   //* Process the completed run or Handle failed or cancelled run
@@ -190,7 +182,7 @@ function getAssistantResponse(thread_id) {
 
   const url = `https://api.openai.com/v1/threads/${thread_id}/messages?limit=10&order=desc`;
   const response = fetchResFromAPI(url, "get");
-  if (!checkResponseCode(response.getResponseCode())) return createErrorNotification("Error getting assistant response!");
+  if (!checkResponseCode(response.getResponseCode())) return createErrorNotification("Error getting assistant response!", "getAssistantResponse");
 
   const responseData = JSON.parse(response.getContentText());
   const messages = responseData.data;
@@ -223,3 +215,21 @@ function getAssistantResponse(thread_id) {
   return card.addSection(section).build();
 }
 
+//! Untested function
+function deleteThread() {
+  const scriptProp = PropertiesService.getScriptProperties();
+  const threadID = scriptProp.getProperty('threadID');
+  if (!threadID) return createErrorNotification("ThreadID not provided!", "deleteThread");
+
+  const url = `https://api.openai.com/v1/threads/${threadID}`;
+
+  const response = fetchResFromAPI(url, "delete");
+  if (!checkResponseCode(response.getResponseCode())) return createErrorNotification("Error deleting thread!", "deleteThread");
+
+  const deletionBool = JSON.parse(response.getContentText()).deleted;
+  if (!deletionBool) return createErrorNotification("Thread not deleted!", "deleteThread");
+  scriptProp.deleteProperty('threadID');
+  scriptProp.deleteProperty('messageID');
+  console.log("Thread ID & Message ID deleted successfully")
+  return onGmailMessageOpen();
+}
