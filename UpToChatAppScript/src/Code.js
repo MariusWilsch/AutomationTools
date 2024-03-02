@@ -26,7 +26,7 @@ function onGmailMessageOpen(context) {
 
   // Buttons
   createButton("Get Thread Data", "getThreadData", section);
-  createButton("Create AI Thread", "createAIThread", section);
+  createButton("Create AI Thread", "createEmptyThread", section);
   createButton("Create Message", "createMessage", section);
   createButton("Get Message Data", "getMessageData", section);
   createButton("Run Assistant", "runAssistant", section);

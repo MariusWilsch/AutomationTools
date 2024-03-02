@@ -46,6 +46,7 @@ function getSecret() {
  * @return {GoogleAppsScript.Card_Service.ActionResponse} - The action response with the error notification.
  */
 function createErrorNotification(errorMessage) {
+  console.log(errorMessage)
   return CardService.newActionResponseBuilder()
     .setNotification(CardService.newNotification()
       .setText(errorMessage)
@@ -59,9 +60,9 @@ function fetchResFromAPI(url, method, payload = null) {
 
   const options = {
     method: method,
-    contentType: "application/json",
     headers: {
       "Authorization": `Bearer ${secret}`,
+      "content-type": "application/json",
       "OpenAI-Beta": "assistants=v1"
     },
     muteHttpExceptions: true
@@ -73,14 +74,5 @@ function fetchResFromAPI(url, method, payload = null) {
 
   const response = UrlFetchApp.fetch(url, options);
 
-  if (!checkResponseCode(response.getResponseCode())) {
-    return createErrorNotification("Error making request!");
-  }
-
   return response;
-}
-
-function parseResponse(response) {
-  const responseData = JSON.parse(response.getContentText());
-  return responseData;
 }
