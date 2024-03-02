@@ -37,25 +37,34 @@ function getSecret() {
   const secretName = "OpenAI-API-KEY"
   const url = `https://secretmanager.googleapis.com/v1/projects/${projectId}/secrets/${secretName}/versions/latest:access`;
 
-  const res = UrlFetchApp.fetch(url, {
-    method: "get",
-    headers: {
-      "Authorization": "Bearer " + ScriptApp.getOAuthToken(),
-      "Content-Type": "application/json"
-    }
-  });
+  Logger.log('Retrieving secret from Secret Manager: ', ScriptApp.getOAuthToken());
 
-  const data = JSON.parse(res.getContentText());
-  Logger.log(data, res.getResponseCode());
-  if (res.getResponseCode() === 200) {
-    // Replace atob with Utilities.base64Decode and convert byte array to string
-    const secretPayload = Utilities.newBlob(data.payload.data).getDataAsString();
-    Logger.log(secretPayload);
-    return secretPayload;
-  } else {
-    Logger.log("Error: ", res.getResponseCode());
+  const options = {
+    'method': 'get',
+    'headers': { 'Authorization': 'Bearer ' + ScriptApp.getOAuthToken() },
+    'muteHttpExceptions': true
+  };
+
+  let response;
+  try {
+    response = UrlFetchApp.fetch(url, options);
+  } catch (e) {
+    Logger.log('Failed to retrieve the secret. Error: ' + e.toString());
     return null;
   }
+
+  const responseCode = response.getResponseCode();
+  const responseBody = response.getContentText();
+
+  if (responseCode !== 200) {
+    Logger.log('Non-successful response code: ' + responseCode + ' - ' + responseBody);
+    return null;
+  }
+
+  const secretPayload = JSON.parse(responseBody).payload.data;
+  const decodedSecret = Utilities.newBlob(Utilities.base64Decode(secretPayload)).getDataAsString();
+
+  return decodedSecret;
 }
 
 function getThreadData(event) {
@@ -83,7 +92,7 @@ function createAIThread(event) {
   // const plainMessages = JSON.parse(PropertiesService.getScriptProperties().getProperty('plainTextMessages'));
 
   const secret = getSecret();
-  Logger.log("Secret is ", secret);
+  Logger.log(secret);
 
   // const payload = {
   //   messages: [
