@@ -52,3 +52,35 @@ function createErrorNotification(errorMessage) {
       .setType(CardService.NotificationType.ERROR))
     .build();
 }
+
+function fetchResFromAPI(url, method, payload = null) {
+  const secret = getSecret();
+  if (!secret) return createErrorNotification("No secret found!");
+
+  const options = {
+    method: method,
+    contentType: "application/json",
+    headers: {
+      "Authorization": `Bearer ${secret}`,
+      "OpenAI-Beta": "assistants=v1"
+    },
+    muteHttpExceptions: true
+  };
+
+  if (payload) {
+    options.payload = JSON.stringify(payload);
+  }
+
+  const response = UrlFetchApp.fetch(url, options);
+
+  if (!checkResponseCode(response.getResponseCode())) {
+    return createErrorNotification("Error making request!");
+  }
+
+  return response;
+}
+
+function parseResponse(response) {
+  const responseData = JSON.parse(response.getContentText());
+  return responseData;
+}

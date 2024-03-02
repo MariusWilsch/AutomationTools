@@ -232,6 +232,7 @@ function getAssistantResponse(thread_id) {
   orderedAssistantMessages.forEach((msg, index) => {
     section.addWidget(CardService.newTextParagraph().setText(`Assistant Message ${index + 1}: ${msg}`));
   });
+  //! Assistant message is working but not displaying in the UI - need to fix this
   return card.addSection(section).build();
 }
 
