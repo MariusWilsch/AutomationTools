@@ -20,6 +20,12 @@ function buildHomepage() {
 }
 
 function onGmailMessageOpen(context) {
+  //TODO: when user opens an different email in the same thread, the summary shouldn't disappear
+  // const curID = PropertiesService.getScriptProperties().getProperty('threadID');
+  // console.log(context);
+  // if (curID === context.messageMetadata.threadId)
+  //   return createSummaryCard(PropertiesService.getScriptProperties().getProperty('curSummary'));
+
   const card = CardService.newCardBuilder();
 
   // Creating a header

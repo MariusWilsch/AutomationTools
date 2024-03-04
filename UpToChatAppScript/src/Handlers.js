@@ -16,7 +16,8 @@ function runWrapper(event) {
 
 function getThreadData(event) {
   const message = GmailApp.getMessageById(event.messageMetadata.messageId);
-  const messages = message.getThread().getMessages();
+  const thread = message.getThread();
+  const messages = thread.getMessages();
   const plainTextMessages = messages.map((message, num) => {
     let body = message.getPlainBody();
     body = body.replace(/(\r\n){2,}/g, '\r\n');
@@ -24,6 +25,7 @@ function getThreadData(event) {
     return `MESSAGE ${num + 1} - ${body}`
   });
   PropertiesService.getScriptProperties().setProperty('plainTextMessages', JSON.stringify(plainTextMessages));
+  PropertiesService.getUserProperties().setProperty('CurrentThreadID', thread.getId());
   console.log("Thread Data fetched successfully!")
 }
 //? Would it be better to create a class for shared variables and methods? like getScriptProperties, setScriptProperties, etc.
@@ -82,6 +84,7 @@ function runAssistant() {
   //* Waiting for the run to complete
   orderedAssistantMessages = waitForCompletion(thread_id, run_id);
   if (!orderedAssistantMessages) return createErrorNotification("Assistant messages not available", "runAssistant");
+  PropertiesService.getUserProperties().setProperty('curSummary', JSON.stringify(orderedAssistantMessages[0]));
 
   // // Once you have the orderedAssistantMessages...
   // const cardBuilder = CardService.newCardBuilder();
