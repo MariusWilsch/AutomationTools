@@ -1,23 +1,34 @@
+function runWrapper(event) {
+  let card;
+  try {
+    getThreadData(event);
+    createEmptyThread();
+    createMessage();
+    card = runAssistant();
+    //! I need to test if the Assistant always returns the same output
+    //! format with overall summary and sectioned summary
+    // deleteThread();
+  } catch (error) {
+    console.log("Error in runWrapper: ", error);
+  }
+  return card;
+}
+
 function getThreadData(event) {
   const message = GmailApp.getMessageById(event.messageMetadata.messageId);
-  const thread = message.getThread();
-  const messages = thread.getMessages();
+  const messages = message.getThread().getMessages();
   const plainTextMessages = messages.map((message, num) => {
     let body = message.getPlainBody();
-    body = body.replace(/(\r\n){2,}/g, '\r\n'); // replace consecutive occurrences of \r\n
-    body = body.replace(/-{2,}/g, ''); // replace consecutive occurrences of - with empty string
+    body = body.replace(/(\r\n){2,}/g, '\r\n');
+    body = body.replace(/-{2,}/g, '');
     return `MESSAGE ${num + 1} - ${body}`
   });
-
-  try {
-    PropertiesService.getScriptProperties().setProperty('plainTextMessages', JSON.stringify(plainTextMessages));
-  } catch (error) {
-    Logger.log("Error setting plainTextMessages: ", error);
-  }
+  PropertiesService.getScriptProperties().setProperty('plainTextMessages', JSON.stringify(plainTextMessages));
+  console.log("Thread Data fetched successfully!")
 }
 //? Would it be better to create a class for shared variables and methods? like getScriptProperties, setScriptProperties, etc.
 
-function createEmptyThread(event) {
+function createEmptyThread() {
   const scriptProp = PropertiesService.getScriptProperties();
   //* Check if threadID is already set
   const threadID = scriptProp.getProperty('threadID');
@@ -28,45 +39,16 @@ function createEmptyThread(event) {
   if (!checkResponseCode(response.getResponseCode())) return createErrorNotification("Error creating thread!", "createEmptyThread");
 
   const newThreadID = JSON.parse(response.getContentText()).id;
-  console.log("Thread created successfully with threadID: ", newThreadID);
   scriptProp.setProperty('threadID', newThreadID);
-  return onGmailMessageOpen();
+  console.log("Thread created successfully with threadID: ", newThreadID);
 }
-
-// function createAIThread(event) {
-//   // Check if threadID is already set
-//   const threadID = PropertiesService.getScriptProperties().getProperty('threadID');
-//   if (threadID) {
-//     console.log("Thread ID already set: ", threadID);
-//     return createErrorNotification("ThreadID already set!");
-//   }
-
-//   const url = "https://api.openai.com/v1/threads";
-//   const secret = getSecret();
-//   if (!secret) return createErrorNotification("No secret found!");
-
-//   const response = UrlFetchApp.fetch(url, {
-//     method: "post",
-//     contentType: "application/json",
-//     headers: {
-//       "Authorization": `Bearer ${secret}`,
-//       "OpenAI-Beta": "assistants=v1"
-//     },
-//   });
-
-//   if (!checkResponseCode(response.getResponseCode())) return createErrorNotification("Error creating thread!");
-
-//   const newThreadID = JSON.parse(response.getContentText()).id;
-//   console.log("Thread created successfully with threadID: ", newThreadID);
-//   PropertiesService.getScriptProperties().setProperty('threadID', newThreadID);
-// }
 
 function createMessage() {
   const scriptProp = PropertiesService.getScriptProperties();
 
   //* Guard clause to check necessary properties
-  const messageID = scriptProp.getProperty('messageID');
-  if (messageID) return createErrorNotification("MessageID already set!", "createMessage");
+  // const messageID = scriptProp.getProperty('messageID');
+  // if (messageID) return createErrorNotification("MessageID already set!", "createMessage");
 
   const threadID = scriptProp.getProperty('threadID');
   if (!threadID) return createErrorNotification("ThreadID not set!", "createMessage");
@@ -80,65 +62,9 @@ function createMessage() {
   if (!checkResponseCode(response.getResponseCode())) return createErrorNotification("Error creating message!", "createMessage");
 
   const newMessageID = JSON.parse(response.getContentText()).id;
-  console.log("Message created successfully with messageID: ", newMessageID);
   PropertiesService.getScriptProperties().setProperty('messageID', newMessageID);
-  return onGmailMessageOpen();
+  console.log("Message created successfully with messageID: ", newMessageID);
 }
-
-function getMessageData(event) {
-  const scriptProp = PropertiesService.getScriptProperties();
-
-  //* Guard clause to check necessary properties
-  const messageID = scriptProp.getProperty('messageID');
-  if (!messageID)
-    return createErrorNotification("MessageID not set!", "getMessageData");
-
-  const threadID = scriptProp.getProperty('threadID');
-  if (!threadID)
-    return createErrorNotification("ThreadID not set!", "getMessageData");
-
-  //* Getting message data
-  const url = `https://api.openai.com/v1/threads/${threadID}/messages/${messageID}`;
-  const response = fetchResFromAPI(url, "get");
-  if (!checkResponseCode(response.getResponseCode()))
-    return createErrorNotification("Error getting message data!", "getMessageData");
-
-  const messageData = JSON.parse(response.getContentText());
-  console.log("Message data: ", messageData);
-}
-
-// function getMessageData(event) {
-//   const messageID = PropertiesService.getScriptProperties().getProperty('messageID');
-//   if (!messageID) {
-//     console.log("Message ID not set!");
-//     return createErrorNotification("MessageID not set!");
-//   }
-
-//   const threadID = PropertiesService.getScriptProperties().getProperty('threadID');
-//   if (!threadID) {
-//     console.log("Thread ID not set!");
-//     return createErrorNotification("ThreadID not set!");
-//   }
-
-//   const url = `https://api.openai.com/v1/threads/${threadID}/messages/${messageID}`;
-//   const secret = getSecret();
-//   if (!secret) return createErrorNotification("No secret found!");
-
-//   const response = UrlFetchApp.fetch(url, {
-//     method: "get",
-//     contentType: "application/json",
-//     headers: {
-//       "Authorization": `Bearer ${secret}`,
-//       "OpenAI-Beta": "assistants=v1"
-//     }
-//   });
-
-//   if (!checkResponseCode(response.getResponseCode())) return createErrorNotification("Error getting message data!");
-
-//   const messageData = JSON.parse(response.getContentText());
-//   console.log("Message data: ", messageData);
-//   return messageData;
-// }
 
 function runAssistant() {
   //* Guard clause to check necessary properties
@@ -157,31 +83,57 @@ function runAssistant() {
   orderedAssistantMessages = waitForCompletion(thread_id, run_id);
   if (!orderedAssistantMessages) return createErrorNotification("Assistant messages not available", "runAssistant");
 
-  // Once you have the orderedAssistantMessages...
-  const cardBuilder = CardService.newCardBuilder();
-  cardBuilder.setHeader(CardService.newCardHeader().setTitle("Assistant Response"));
-  const section = CardService.newCardSection();
+  // // Once you have the orderedAssistantMessages...
+  // const cardBuilder = CardService.newCardBuilder();
+  // cardBuilder.setHeader(CardService.newCardHeader().setTitle("Assistant Response"));
+  // const section = CardService.newCardSection();
 
-  orderedAssistantMessages.forEach((msg, index) => {
-    section.addWidget(CardService.newTextParagraph().setText(`Assistant Message ${index + 1}: ${msg}`));
-  });
+  // orderedAssistantMessages.forEach((msg, index) => {
+  //   section.addWidget(CardService.newTextParagraph().setText(`Assistant Message ${index + 1}: ${msg}`));
+  // });
 
-  cardBuilder.addSection(section);
+  // cardBuilder.addSection(section);
 
   // Now, instead of returning the card, use the ActionResponseBuilder to update the UI
   const actionResponse = CardService.newActionResponseBuilder()
-    .setNavigation(CardService.newNavigation().pushCard(cardBuilder.build()))
+    .setNavigation(CardService.newNavigation().pushCard(createSummaryCard(orderedAssistantMessages[0])))
     .build();
 
   return actionResponse;
 }
+
+
+// function runAssistant() {
+//   //* Guard clause to check necessary properties
+//   const thread_id = PropertiesService.getScriptProperties().getProperty('threadID');
+//   if (!thread_id) return createErrorNotification("ThreadID not set!", "runAssistant");
+
+//   //* Running the assistant
+//   const url = `https://api.openai.com/v1/threads/${thread_id}/runs`;
+//   const response = fetchResFromAPI(url, "post", { "assistant_id": "asst_jHFuDKx43IyrktWeooD6BzFp" });
+//   if (!checkResponseCode(response.getResponseCode())) return createErrorNotification("Error running assistant!", "runAssistant");
+
+//   const run_id = JSON.parse(response.getContentText()).id;
+//   console.log("Run started successfully with runID: ", run_id);
+
+//   //* Waiting for the run to complete
+//   assistantMessages = waitForCompletion(thread_id, run_id);
+//   if (!assistantMessages) return createErrorNotification("Assistant message not available", "runAssistant");
+
+//   //* Action Response
+//   //! If there are multiple messages they won't be displayed as of now
+//   const actionResponse = CardService.newActionResponseBuilder()
+//     .setNavigation(CardService.newNavigation().pushCard(createSummaryCard(assistantMessages)))
+//     .build();
+//   return actionResponse;
+// }
 
 function waitForCompletion(thread_id, run_id) {
   let status = "";
   const url = `https://api.openai.com/v1/threads/${thread_id}/runs/${run_id}`;
 
   do {
-    Utilities.sleep(2500); // Wait for 2.5 seconds before checking the status again
+    Utilities.sleep(2000); // Wait for 2.5 seconds before checking the status again
     const statusResponse = fetchResFromAPI(url, "get");
     if (!checkResponseCode(statusResponse.getResponseCode())) return createErrorNotification("Error getting run status!", "waitForCompletion");
 
@@ -192,20 +144,21 @@ function waitForCompletion(thread_id, run_id) {
   //* Process the completed run or Handle failed or cancelled run
   if (status === "completed")
     return getAssistantResponse(thread_id)
-  else //TODO: Add handling for failure or cancellation here
-    console.log("Run ended with status: " + status);
+  console.log("Run ended with status: " + status);
+  return createErrorNotification("Run ended with status: " + status, "waitForCompletion");
 }
 
 function getAssistantResponse(thread_id) {
   console.log("Run completed successfully.");
 
-  const url = `https://api.openai.com/v1/threads/${thread_id}/messages?limit=10&order=desc`;
+  const url = `https://api.openai.com/v1/threads/${thread_id}/messages?limit=5&order=desc`;
   const response = fetchResFromAPI(url, "get");
   if (!checkResponseCode(response.getResponseCode())) return createErrorNotification("Error getting assistant response!", "getAssistantResponse");
 
   const responseData = JSON.parse(response.getContentText());
   const messages = responseData.data;
 
+  //TODO: I think in this use case the assistant will always only be the first message in the array
   const assistantMessages = [];
   messages.some(message => {
     if (message.role === "assistant") {
@@ -223,6 +176,7 @@ function getAssistantResponse(thread_id) {
   orderedAssistantMessages.forEach((msg, index) => {
     Logger.log(`Assistant Message ${index + 1}: ${msg}`);
   });
+
   return orderedAssistantMessages;
 }
 
@@ -241,5 +195,4 @@ function deleteThread() {
   scriptProp.deleteProperty('threadID');
   scriptProp.deleteProperty('messageID');
   console.log("Thread ID & Message ID deleted successfully")
-  return onGmailMessageOpen();
 }

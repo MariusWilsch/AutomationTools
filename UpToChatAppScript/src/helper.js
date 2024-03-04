@@ -71,3 +71,36 @@ function fetchResFromAPI(url, method, payload = null) {
 
   return response;
 }
+
+function createSummaryCard(output) {
+  //* String manipulation to beautify the output
+  const summary = output.split('Sectioned Summaries:')
+  console.log(summary)
+  const overallSummary = summary[0].replace('Overall Summary:', '').trim();
+  const sectionedSummaries = summary[1].replace('Sectioned Summaries:', '').trim();
+
+  console.log(overallSummary);
+  console.log(sectionedSummaries);
+
+  // Create a new card builder
+  const cardBuilder = CardService.newCardBuilder();
+
+  // Set the card header
+  cardBuilder.setHeader(CardService.newCardHeader().setTitle("Your Email Summary"));
+
+  // Add the Overall Summary section
+  const sectionOverall = CardService.newCardSection().setHeader("<b>Overall Summary:</b>");
+  sectionOverall.addWidget(CardService.newTextParagraph().setText(`${overallSummary}`));
+
+  // Add the Sectioned Summaries section, make it collapsible
+  const sectionSectioned = CardService.newCardSection().setCollapsible(true).setHeader("<b>Sectioned Summaries:</b>");
+  sectionSectioned.addWidget(CardService.newTextParagraph().setText(sectionedSummaries));
+
+  // Add sections to card
+  cardBuilder.addSection(sectionOverall);
+  cardBuilder.addSection(sectionSectioned);
+
+  console.log("Card created successfully");
+  // Return the built card
+  return cardBuilder.build();
+}
