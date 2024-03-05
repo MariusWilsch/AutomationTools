@@ -15,9 +15,20 @@ function runWrapper(event) {
 }
 
 function getThreadData(event) {
-  const message = GmailApp.getMessageById(event.messageMetadata.messageId);
-  const thread = message.getThread();
-  const messages = thread.getMessages();
+  // const message = GmailApp.getMessageById(event.messageMetadata.messageId);
+  // const thread = message.getThread();
+  console.log(event.messageMetadata.threadId);
+  const thread2 = GmailApp.getThreadById(event.messageMetadata.threadId);
+  const messages = thread2.getMessages();
+  // console.log(thread.getId(), thread2.getId());
+
+  // const message = GmailApp.getMessageById(event.messageMetadata.messageId);
+  // const thread = message.getThread();
+  // console.log(event.messageMetadata.threadId);
+  // const thread2 = GmailApp.getThreadById(event.messageMetadata.threadId);
+  // const messages = thread.getMessages();
+  // console.log(thread.getId(), thread2.getId());
+
   const plainTextMessages = messages.map((message, num) => {
     let body = message.getPlainBody();
     body = body.replace(/(\r\n){2,}/g, '\r\n');
@@ -25,7 +36,7 @@ function getThreadData(event) {
     return `MESSAGE ${num + 1} - ${body}`
   });
   PropertiesService.getScriptProperties().setProperty('plainTextMessages', JSON.stringify(plainTextMessages));
-  PropertiesService.getUserProperties().setProperty('CurrentThreadID', thread.getId());
+  PropertiesService.getUserProperties().setProperty('CurThreadID', event.messageMetadata.threadId);
   console.log("Thread Data fetched successfully!")
 }
 //? Would it be better to create a class for shared variables and methods? like getScriptProperties, setScriptProperties, etc.

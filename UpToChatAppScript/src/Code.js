@@ -20,11 +20,11 @@ function buildHomepage() {
 }
 
 function onGmailMessageOpen(context) {
-  //TODO: when user opens an different email in the same thread, the summary shouldn't disappear
-  // const curID = PropertiesService.getScriptProperties().getProperty('threadID');
-  // console.log(context);
-  // if (curID === context.messageMetadata.threadId)
-  //   return createSummaryCard(PropertiesService.getScriptProperties().getProperty('curSummary'));
+  console.log("CurID in Properties: ", PropertiesService.getUserProperties().getProperty('CurThreadID'));
+  console.log("CurID in Context: ", context.messageMetadata.threadId);
+  const curID = PropertiesService.getUserProperties().getProperty('CurThreadID')
+  if (curID === context.messageMetadata.threadId)
+    return createSummaryCard(JSON.parse(PropertiesService.getUserProperties().getProperty('curSummary')));
 
   const card = CardService.newCardBuilder();
 
@@ -39,7 +39,11 @@ function onGmailMessageOpen(context) {
 
   // Buttons
   createButton("Summarize Email", "runWrapper", section);
+  //! Testing - Del in Prod.
   createButton("Delete Thread", "deleteThread", section);
+  createButton("Get Thread Data", "getThreadData", section);
+
+
 
   card.addSection(section);
 
